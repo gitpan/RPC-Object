@@ -6,7 +6,7 @@ use IO::Socket::INET;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.00_01';
+our $VERSION = '0.01';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -25,7 +25,6 @@ sub new {
 sub AUTOLOAD {
     my $self = shift;
     my $name = (split '::', our $AUTOLOAD)[-1];
-    return if $name eq 'DESTROY';
     return _invoke($self->{host}, $self->{port}, $name, $self->{object}, @_);
 }
 

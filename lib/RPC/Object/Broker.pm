@@ -8,7 +8,6 @@ use Data::Dump qw(dump);
 use IO::Socket::INET;
 use Scalar::Util qw(blessed);
 use Storable qw(thaw nfreeze);
-#use RPC::Object;
 use RPC::Object::Common;
 
 {
@@ -61,6 +60,10 @@ sub handle {
         $self->_load_module($pack);
         lock %{$self->{object}};
         $obj = $self->{object}{ref $obj};
+        if ($func eq 'DESTROY') {
+            delete $self->{object}{ref $obj};
+            return [RESPONSE_NORMAL];
+        }
     }
     else {
         $self->_load_module($obj);
