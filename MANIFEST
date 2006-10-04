@@ -1,0 +1,8 @@
+Makefile.PL
+MANIFEST
+README
+t/RPC-Object.t
+lib/RPC/Object.pm
+lib/RPC/Object/Broker.pm
+lib/RPC/Object/Common.pm
+META.yml                                 Module meta-data (added by MakeMaker)
