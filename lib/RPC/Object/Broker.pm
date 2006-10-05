@@ -5,7 +5,7 @@ use threads::shared;
 use warnings;
 use Carp;
 use IO::Socket::INET;
-use Scalar::Util qw(blessed weaken);
+use Scalar::Util qw(blessed weaken refaddr);
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
@@ -20,8 +20,8 @@ use RPC::Object::Common;
         $instance->{object} = &share({});
         $instance->{preload} = &share({});
         bless $instance, $class;
-        $instance->{object}{ref $instance} = $instance;
-        weaken $instance->{object}{ref $instance};
+        $instance->{object}{_encode_ref($instance)} = $instance;
+        weaken $instance->{object}{_encode_ref($instance)};
         for (@preload) {
             eval { $instance->_load_module($_) };
             $instance->{preload}{$_} = 1;
@@ -55,18 +55,16 @@ sub handle {
     my ($self, $arg) = @_;
     my $context = shift @$arg;
     my $func = shift @$arg;
-    my $obj = shift @$arg;
-    if (my $pack = blessed $obj) {
-        $self->_load_module($pack);
-        lock %{$self->{object}};
-        $obj = $self->{object}{ref $obj};
-        if ($func eq 'DESTROY') {
-            delete $self->{object}{ref $obj};
-            return [RESPONSE_NORMAL];
-        }
-    }
-    else {
-        $self->_load_module($obj);
+    my $ref = shift @$arg;
+    lock %{$self->{object}};
+    my $obj = $self->{object}{$ref};
+    $obj = $ref unless $obj;
+    my $pack = blessed $obj;
+    $pack = $ref unless $pack;
+    $self->_load_module($pack);
+    if ($ref eq $pack && $func eq 'DESTROY') {
+        delete $self->{object}{$ref};
+        return [RESPONSE_NORMAL];
     }
     my @ret;
     {
@@ -74,9 +72,11 @@ sub handle {
         @ret = $context eq WANT_SCALAR
           ? scalar eval { $obj->$func(@$arg) }
             : eval { $obj->$func(@$arg) };
-        if (blessed $ret[0]) {
-            lock %{$self->{object}};
-            $self->{object}{ref $ret[0]} = $ret[0];
+        no warnings 'uninitialized';
+        if ($pack eq blessed $ret[0]) {
+            $ref = _encode_ref($ret[0]);
+            $self->{object}{$ref} = $ret[0];
+            $ret[0] = $ref;
         }
     }
     return $@ ? [RESPONSE_ERROR, $@] : [RESPONSE_NORMAL, @ret];
@@ -88,6 +88,11 @@ sub _load_module {
     eval qq{ require $pack };
     die $@ if $@;
     return;
+}
+
+sub _encode_ref {
+    my ($obj) = @_;
+    return refaddr $obj;
 }
 
 1;

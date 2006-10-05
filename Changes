@@ -1,5 +1,8 @@
 Revision history for Perl extension RPC::Object.
 
+0.03  05-OCT-2006
+        - Fixed a problem in reference handling
+
 0.02  05-OCT-2006
         - nfreeze() may currupt RPC::Object object if pass @_ to it
 
