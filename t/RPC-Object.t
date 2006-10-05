@@ -5,5 +5,6 @@ BEGIN {
     use_ok('RPC::Object::Broker');
 }
 
-
+require_ok('RPC::Object');
+require_ok('RPC::Object::Broker');
 

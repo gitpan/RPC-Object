@@ -4,28 +4,28 @@ use threads;
 use threads::shared;
 use warnings;
 use Carp;
-use Data::Dump qw(dump);
 use IO::Socket::INET;
-use Scalar::Util qw(blessed);
+use Scalar::Util qw(blessed weaken);
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
 {
     my $instance : shared;
     sub get_instance {
-        my ($class, $port) = @_;
+        my ($class, $port, @preload) = @_;
+        lock $instance;
         return $instance if $instance;
-        my $self : shared;
-        $self = &share({});
-        lock %{$self};
-        $self->{port} = $port;
-        share($self->{rclass});
-        share($self->{object});
-        $self->{rclass} = &share({});
-        $self->{object} = &share({});
-        bless $self, $class;
-        $instance = $self;
-        $self->{object}{ref $instance} = $instance;
+        $instance = &share({});
+        $instance->{port} = $port;
+        $instance->{object} = &share({});
+        $instance->{preload} = &share({});
+        bless $instance, $class;
+        $instance->{object}{ref $instance} = $instance;
+        weaken $instance->{object}{ref $instance};
+        for (@preload) {
+            eval { $instance->_load_module($_) };
+            $instance->{preload}{$_} = 1;
+        }
         return $instance;
     }
 }
@@ -84,6 +84,7 @@ sub handle {
 
 sub _load_module {
     my ($self, $pack) = @_;
+    return if !$pack || $self->{preload}{$pack};
     eval qq{ require $pack };
     die $@ if $@;
     return;

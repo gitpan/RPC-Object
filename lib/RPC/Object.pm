@@ -6,7 +6,7 @@ use IO::Socket::INET;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -25,19 +25,19 @@ sub new {
 sub AUTOLOAD {
     my $self = shift;
     my $name = (split '::', our $AUTOLOAD)[-1];
+    return if $name eq 'DESTROY';
     return _invoke($self->{host}, $self->{port}, $name, $self->{object}, @_);
 }
 
 sub _invoke {
-    my $host = shift;
-    my $port = shift;
+    my ($host, $port, @arg) = @_;
     my $sock = IO::Socket::INET->new(PeerAddr => $host,
                                      PeerPort => $port,
                                      Proto => 'tcp',
                                      Type => SOCK_STREAM,
                                     );
     binmode $sock;
-    print {$sock} nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @_]);
+    print {$sock} nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @arg]);
     $sock->shutdown(1);
     my $res = do { local $/; <$sock> };
     $sock->close();
@@ -72,9 +72,11 @@ B<On server>
 B<On client>
 
   use RPC::Object;
-  $o = RPC::Object->new("$host:$port", 'method_a', 'The::Module');
+  $o = RPC::Object->new("$host:$port", 'method_a', 'TestModule');
   my $ans1 = $o->method_b($arg1, $arg2);
   my @ans2 = $o->method_c($arg3, $arg4);
+
+Please see more examples in the C<eg/> directory.
 
 =head1 DESCRIPTON
 
