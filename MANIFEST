@@ -8,6 +8,7 @@ lib/RPC/Object/Broker.pm
 lib/RPC/Object/Common.pm
 eg/server.pl
 eg/client.pl
+eg/client2.pl
 eg/TestModule.pm
 
 META.yml                                 Module meta-data (added by MakeMaker)

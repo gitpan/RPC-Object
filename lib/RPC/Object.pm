@@ -6,7 +6,7 @@ use IO::Socket::INET;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -25,31 +25,45 @@ sub new {
 sub AUTOLOAD {
     my $self = shift;
     my $name = (split '::', our $AUTOLOAD)[-1];
-    return if $name eq 'DESTROY';
-    return _invoke($self->{host}, $self->{port}, $name, $self->{object}, @_);
+    my $host = $self->{host};
+    my $port = $self->{port};
+    my $obj = $self->{object};
+    if ($name eq 'DESTROY') {
+        return;
+    }
+    elsif ($name eq RELEASE_REF) {
+        _invoke($host, $port, $name, $obj, @_);
+        $self->{object} = undef;
+        return;
+    }
+    elsif ($obj) {
+        return _invoke($host, $port, $name, $obj, @_);
+    }
+    return;
 }
 
 sub _invoke {
-    my ($host, $port, @arg) = @_;
+    my $host = shift;
+    my $port = shift;
     my $sock = IO::Socket::INET->new(PeerAddr => $host,
                                      PeerPort => $port,
                                      Proto => 'tcp',
                                      Type => SOCK_STREAM,
                                     );
     binmode $sock;
-    print {$sock} nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @arg]);
+    print {$sock} nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @_]);
     $sock->shutdown(1);
     my $res = do { local $/; <$sock> };
     $sock->close();
     my ($stat, @ret) = @{thaw($res)};
     if ($stat eq RESPONSE_ERROR) {
-        croak @ret;
+        die @ret;
     }
     elsif ($stat eq RESPONSE_NORMAL) {
         return wantarray ? @ret : $ret[0];
     }
     else {
-        croak "Unknown response";
+        die "Unknown response";
     }
     return;
 }

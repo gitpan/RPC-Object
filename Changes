@@ -1,5 +1,8 @@
 Revision history for Perl extension RPC::Object.
 
+0.04  06-OCT-2006
+        - Add get_blessed_instance() and __release_ref()
+
 0.03  05-OCT-2006
         - Fixed a problem in reference handling
 

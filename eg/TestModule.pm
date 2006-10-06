@@ -13,6 +13,13 @@ sub new {
     return bless $self, $class;
 }
 
+sub set_name {
+    my ($self, $name) = @_;
+    lock %{$self};
+    $self->{name} = $name;
+    return;
+}
+
 sub get_name {
     my ($self) = @_;
     lock %{$self};

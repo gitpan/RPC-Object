@@ -9,6 +9,8 @@ use Scalar::Util qw(blessed weaken refaddr);
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
+our $DEGUB = 0;
+
 {
     my $instance : shared;
     sub get_instance {
@@ -28,6 +30,29 @@ use RPC::Object::Common;
         }
         return $instance;
     }
+}
+
+sub get_blessed_instance {
+    my ($class, $rclass) = @_;
+    my $self = $class->get_instance();
+    lock %{$self->{object}};
+    for my $ref (keys %{$self->{object}}) {
+        my $obj = $self->{object}{$ref};
+        if ($rclass eq blessed $obj) {
+            delete $self->{object}{$ref};
+            if (our $DEBUG) {
+                print "REPLACE: $ref\n";
+                for (keys %{$self->{object}}) {
+                    print "Now: $_ : $self->{object}{$_} \n";
+                }
+            }
+            return $obj;
+        }
+    }
+    my $instance : shared;
+    $instance = &share({});
+    bless $instance, $rclass;
+    return $instance;
 }
 
 sub start {
@@ -56,15 +81,25 @@ sub handle {
     my $context = shift @$arg;
     my $func = shift @$arg;
     my $ref = shift @$arg;
-    lock %{$self->{object}};
-    my $obj = $self->{object}{$ref};
-    $obj = $ref unless $obj;
-    my $pack = blessed $obj;
-    $pack = $ref unless $pack;
-    $self->_load_module($pack);
-    if ($ref eq $pack && $func eq 'DESTROY') {
-        delete $self->{object}{$ref};
-        return [RESPONSE_NORMAL];
+    my $obj;
+    my $pack;
+    {
+        lock %{$self->{object}};
+        $obj = $self->{object}{$ref};
+        $obj = $ref unless $obj;
+        $pack = blessed $obj;
+        $pack = $ref unless $pack;
+        $self->_load_module($pack);
+        if ($pack && $func eq RELEASE_REF) {
+            delete $self->{object}{$ref};
+            if (our $DEBUG) {
+                print "DELETE: $ref\n";
+                for (keys %{$self->{object}}) {
+                    print "Now: $_ : $self->{object}{$_} \n";
+                }
+            }
+            return [RESPONSE_NORMAL];
+        }
     }
     my @ret;
     {
@@ -73,9 +108,16 @@ sub handle {
           ? scalar eval { $obj->$func(@$arg) }
             : eval { $obj->$func(@$arg) };
         no warnings 'uninitialized';
-        if ($pack eq blessed $ret[0]) {
+        if (blessed $ret[0]) {
             $ref = _encode_ref($ret[0]);
+            lock %{$self->{object}};
             $self->{object}{$ref} = $ret[0];
+            if (our $DEBUG) {
+                print "STORE: $ref, $ret[0]\n";
+                for (keys %{$self->{object}}) {
+                    print "Now: $_ : $self->{object}{$_} \n";
+                }
+            }
             $ret[0] = $ref;
         }
     }
@@ -85,6 +127,9 @@ sub handle {
 sub _load_module {
     my ($self, $pack) = @_;
     return if !$pack || $self->{preload}{$pack};
+    if (our $DEBUG) {
+        print "LOAD: $pack\n";
+    }
     eval qq{ require $pack };
     die $@ if $@;
     return;
