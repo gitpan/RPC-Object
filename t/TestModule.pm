@@ -1,23 +1,13 @@
-package TestModule;
-use strict;
+package t::TestModule;
 use threads;
 use threads::shared;
-use warnings;
 
 sub new {
     my ($class, $name) = @_;
     my $self : shared;
     $self = &share({});
     $self->{name} = $name;
-    $self->{age} = 0;
     return bless $self, $class;
-}
-
-sub set_name {
-    my ($self, $name) = @_;
-    lock %{$self};
-    $self->{name} = $name;
-    return;
 }
 
 sub get_name {
@@ -33,4 +23,4 @@ sub get_age {
 }
 
 1;
-
+_END_

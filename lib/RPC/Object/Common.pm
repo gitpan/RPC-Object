@@ -14,7 +14,16 @@ our @EXPORT = qw(
                  RESPONSE_NORMAL
                  WANT_LIST
                  WANT_SCALAR
+                 _log
                 );
+
+our $LOG_FH;
+
+sub _log {
+    if (defined $LOG_FH) {
+        print $LOG_FH @_;
+    }
+}
 
 1;
 __END__

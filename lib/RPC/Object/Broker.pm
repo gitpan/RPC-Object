@@ -5,11 +5,10 @@ use threads::shared;
 use warnings;
 use Carp;
 use IO::Socket::INET;
-use Scalar::Util qw(blessed weaken refaddr);
+use Scalar::Util qw(blessed weaken);
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
-
-our $DEGUB = 0;
+use RPC::Object::Container;
 
 {
     my $instance : shared;
@@ -19,40 +18,28 @@ our $DEGUB = 0;
         return $instance if $instance;
         $instance = &share({});
         $instance->{port} = $port;
-        $instance->{object} = &share({});
         $instance->{preload} = &share({});
+        $instance->{container} = RPC::Object::Container->new();
         bless $instance, $class;
-        $instance->{object}{_encode_ref($instance)} = $instance;
-        weaken $instance->{object}{_encode_ref($instance)};
+        $instance->_get_container()->insert($instance);
+        weaken $instance;
         for (@preload) {
-            eval { $instance->_load_module($_) };
+            $instance->_load_module($_);
             $instance->{preload}{$_} = 1;
         }
         return $instance;
     }
 }
 
-sub get_blessed_instance {
-    my ($class, $rclass) = @_;
+sub _get_blessed_instance {
+    my $class = shift;
+    my $method = shift;
+    my $rclass = shift;
     my $self = $class->get_instance();
-    lock %{$self->{object}};
-    for my $ref (keys %{$self->{object}}) {
-        my $obj = $self->{object}{$ref};
-        if ($rclass eq blessed $obj) {
-            delete $self->{object}{$ref};
-            if (our $DEBUG) {
-                print "REPLACE: $ref\n";
-                for (keys %{$self->{object}}) {
-                    print "Now: $_ : $self->{object}{$_} \n";
-                }
-            }
-            return $obj;
-        }
-    }
-    my $instance : shared;
-    $instance = &share({});
-    bless $instance, $rclass;
-    return $instance;
+    my $obj = $self->_get_container()->pop($rclass);
+    return $obj if defined $obj;
+    $self->_load_module($rclass);
+    return $rclass->$method(@_);
 }
 
 sub start {
@@ -84,20 +71,13 @@ sub handle {
     my $obj;
     my $pack;
     {
-        lock %{$self->{object}};
-        $obj = $self->{object}{$ref};
+        $obj = $self->_get_container()->get($ref);
         $obj = $ref unless $obj;
         $pack = blessed $obj;
         $pack = $ref unless $pack;
         $self->_load_module($pack);
         if ($pack && $func eq RELEASE_REF) {
-            delete $self->{object}{$ref};
-            if (our $DEBUG) {
-                print "DELETE: $ref\n";
-                for (keys %{$self->{object}}) {
-                    print "Now: $_ : $self->{object}{$_} \n";
-                }
-            }
+            $self->_get_container()->remove($ref);
             return [RESPONSE_NORMAL];
         }
     }
@@ -109,16 +89,7 @@ sub handle {
             : eval { $obj->$func(@$arg) };
         no warnings 'uninitialized';
         if (blessed $ret[0]) {
-            $ref = _encode_ref($ret[0]);
-            lock %{$self->{object}};
-            $self->{object}{$ref} = $ret[0];
-            if (our $DEBUG) {
-                print "STORE: $ref, $ret[0]\n";
-                for (keys %{$self->{object}}) {
-                    print "Now: $_ : $self->{object}{$_} \n";
-                }
-            }
-            $ret[0] = $ref;
+            $ret[0] = $self->_get_container()->insert($ret[0]);
         }
     }
     return $@ ? [RESPONSE_ERROR, $@] : [RESPONSE_NORMAL, @ret];
@@ -126,18 +97,17 @@ sub handle {
 
 sub _load_module {
     my ($self, $pack) = @_;
+    _log "LOAD: $pack\n";
     return if !$pack || $self->{preload}{$pack};
-    if (our $DEBUG) {
-        print "LOAD: $pack\n";
-    }
+    _log "LOADING: $pack\n";
     eval qq{ require $pack };
     die $@ if $@;
     return;
 }
 
-sub _encode_ref {
-    my ($obj) = @_;
-    return refaddr $obj;
+sub _get_container {
+    my ($self) = @_;
+    return $self->{container};
 }
 
 1;

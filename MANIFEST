@@ -2,13 +2,17 @@ Changes
 Makefile.PL
 MANIFEST
 README
-t/RPC-Object.t
+t/01.t
+t/02.t
+t/11.t
+t/12.t
+t/13.t
+t/14.t
+t/15.t
+t/TestModule.pm
+t/TestModule1.pm
 lib/RPC/Object.pm
 lib/RPC/Object/Broker.pm
 lib/RPC/Object/Common.pm
-eg/server.pl
-eg/client.pl
-eg/client2.pl
-eg/TestModule.pm
 
 META.yml                                 Module meta-data (added by MakeMaker)

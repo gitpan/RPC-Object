@@ -1,5 +1,10 @@
 Revision history for Perl extension RPC::Object.
 
+0.10  14-DEC-2006
+        - Added the RPC::Object::Container
+        - Created more tests
+        - Corrected doc. errors
+
 0.04  06-OCT-2006
         - Add get_blessed_instance() and __release_ref()
 
