@@ -6,7 +6,7 @@ use IO::Socket::INET;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -72,13 +72,13 @@ sub _invoke {
 
     my ($stat, @ret) = @{thaw($res)};
     if ($stat eq RESPONSE_ERROR) {
-        die @ret;
+        carp @ret;
     }
     elsif ($stat eq RESPONSE_NORMAL) {
         return wantarray ? @ret : $ret[0];
     }
     else {
-        die "Unknown response";
+        carp "Unknown response";
     }
     return;
 }

@@ -75,7 +75,8 @@ sub handle {
         $obj = $ref unless $obj;
         $pack = blessed $obj;
         $pack = $ref unless $pack;
-        $self->_load_module($pack);
+        eval { $self->_load_module($pack) };
+        return [RESPONSE_ERROR, $@] if $@;
         if ($pack && $func eq RELEASE_REF) {
             $self->_get_container()->remove($ref);
             return [RESPONSE_NORMAL];
