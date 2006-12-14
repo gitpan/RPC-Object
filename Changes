@@ -1,5 +1,8 @@
 Revision history for Perl extension RPC::Object.
 
+0.11  14-DEC-2006
+        - Fixed the missing item in MANIFEST
+
 0.10  14-DEC-2006
         - Added the RPC::Object::Container
         - Created more tests

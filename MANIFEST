@@ -14,5 +14,6 @@ t/TestModule1.pm
 lib/RPC/Object.pm
 lib/RPC/Object/Broker.pm
 lib/RPC/Object/Common.pm
+lib/RPC/Object/Container.pm
 
 META.yml                                 Module meta-data (added by MakeMaker)
