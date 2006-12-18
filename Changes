@@ -1,5 +1,9 @@
 Revision history for Perl extension RPC::Object.
 
+0.13  18-DEC-2006
+        - Removed pop() from Container;
+        - Fixed the problem to load RPC::Object::Broker multiple times
+
 0.12  14-DEC-2006
         - Better error message handling
 

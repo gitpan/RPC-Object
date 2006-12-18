@@ -1,18 +1,10 @@
 use strict;
 use threads;
 use threads::shared;
-use Test::More;
+use Test::More qw(no_plan);
 use Thread::Semaphore;
 
 BEGIN {
-  SKIP: {
-        eval {
-            require threads;
-        };
-        $@ ? plan skip_all => 'RPC::Object need threads to run'
-          : plan 'no_plan';
-    }
-
     use_ok('RPC::Object');
     use_ok('RPC::Object::Broker');
 }

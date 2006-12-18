@@ -36,7 +36,7 @@ sub _get_blessed_instance {
     my $method = shift;
     my $rclass = shift;
     my $self = $class->get_instance();
-    my $obj = $self->_get_container()->pop($rclass);
+    my $obj = $self->_get_container()->find($rclass);
     return $obj if defined $obj;
     $self->_load_module($rclass);
     return $rclass->$method(@_);
@@ -99,6 +99,7 @@ sub handle {
 sub _load_module {
     my ($self, $pack) = @_;
     _log "LOAD: $pack\n";
+    return if $pack eq __PACKAGE__;
     return if !$pack || $self->{preload}{$pack};
     _log "LOADING: $pack\n";
     eval qq{ require $pack };

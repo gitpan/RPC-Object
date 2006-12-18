@@ -3,6 +3,7 @@ use strict;
 use threads;
 use threads::shared;
 use warnings;
+use RPC::Object::Common;
 use Scalar::Util qw(blessed refaddr);
 
 sub new {
@@ -18,6 +19,7 @@ sub insert {
     lock %$self;
     my $ref = _encode_ref($obj);
     $self->{$ref} = $obj;
+    _log "insert $obj as $ref\n";
     return $ref;
 }
 
@@ -25,12 +27,16 @@ sub remove {
     my ($self, $ref) = @_;
     lock %$self;
     delete $self->{$ref};
+    _log "remove $ref\n";
 }
 
 sub get {
     my ($self, $ref) = @_;
     lock %$self;
-    return $self->{$ref};
+    my $obj = $self->{$ref};
+    no warnings 'uninitialized';
+    _log "get $obj as $ref\n";
+    return $obj;
 }
 
 sub find {
@@ -40,24 +46,10 @@ sub find {
     for my $ref (keys %$self) {
         $obj = $self->{$ref};
         last if $class eq blessed $obj;
+        $obj = undef;
     }
-    return $obj;
-}
-
-sub pop {
-    my ($self, $class) = @_;
-    lock %$self;
-    my $obj;
-    for my $ref (keys %$self) {
-        $obj = $self->{$ref};
-        if ($class eq blessed $obj) {
-            delete $self->{$ref};
-            last;
-        }
-        else {
-            $obj = undef;
-        }
-    }
+    no warnings 'uninitialized';
+    _log "find $obj as $class\n";
     return $obj;
 }
 

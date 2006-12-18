@@ -1,20 +1,10 @@
 use strict;
 use threads;
 use threads::shared;
-use Test::More;
+use Test::More qw(no_plan);
 use Thread::Semaphore;
 use RPC::Object;
 use RPC::Object::Broker;
-
-BEGIN {
-  SKIP: {
-        eval {
-            require threads;
-        };
-        $@ ? plan skip_all => 'RPC::Object need threads to run'
-          : plan 'no_plan';
-    }
-}
 
 my $s = Thread::Semaphore->new();
 my $serv_port = 9000;
