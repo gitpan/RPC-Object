@@ -6,7 +6,7 @@ use IO::Socket::INET;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.13';
+our $VERSION = '0.15';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -14,18 +14,19 @@ sub new {
     my $url = shift;
     my ($host, $port) = $url =~ m{([^:]+):(\d+)};
     my $obj = _invoke($host, $port, @_);
-    my $self = {
-                host => $host,
-                port => $port,
-                object => $obj,
-               };
+    my $self = &share({});
+    %$self = (host => $host, port => $port, object => $obj);
     return bless $self, $class;
 }
 
 sub get_instance {
     my $class = shift;
     my $url = shift;
-    return $class->new($url, '_get_blessed_instance', 'RPC::Object::Broker', @_);
+    my $self = $class->new($url,
+                           '_get_blessed_instance',
+                           'RPC::Object::Broker',
+                           @_);
+    return $self;
 }
 
 sub AUTOLOAD {
@@ -35,11 +36,6 @@ sub AUTOLOAD {
     my $port = $self->{port};
     my $obj = $self->{object};
     if ($name eq 'DESTROY') {
-        return;
-    }
-    elsif ($name eq RELEASE_REF) {
-        _invoke($host, $port, $name, $obj, @_);
-        $self->{object} = undef;
         return;
     }
     elsif ($obj) {
@@ -58,14 +54,13 @@ sub _invoke {
             $sock = IO::Socket::INET->new(PeerAddr => $host,
                                           PeerPort => $port,
                                           Proto => 'tcp',
-                                          Type => SOCK_STREAM,
-                                         );
+                                          Type => SOCK_STREAM);
             binmode $sock;
         };
         $connected = !$@;
         sleep 1 unless $connected;
     }
-    print {$sock} nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @_]);
+    print $sock nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @_]);
     $sock->shutdown(1);
     my $res = do { local $/; <$sock> };
     $sock->close();
@@ -157,14 +152,11 @@ B<Constructor and Destructor>
 
 The Module could name its constructor any meaningful name. it do not have to be C<new>, or C<create>, etc...
 
-To release an object, use C<RPC::Object::rpc_object_release>, e.g.
-
-  $o = RPC::Object->new("$host:$port", 'method_a', 'TestModule');
-  $o->rpc_object_release();
+There is no guarantee that the destructor will be called as expected.
 
 B<Global instance>
 
-There are two ways to allocate and access global instances: a) use the preload module list to load the module at server side, and use the C<RPC::Object::new()> method; b) use the C<RPC::Object::get_instance()> method. The performance of method a may be better as modules are only loaded once.
+To allocate and access global instances, use the C<RPC::Object::get_instance()> method.
 
 =head1 AUTHORS
 

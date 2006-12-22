@@ -3,28 +3,24 @@ use threads;
 use threads::shared;
 
 {
-    my $instance : shared;
-    sub get_instance {
+    my $instance;
+    sub get_instance : locked {
         my ($class, $name) = @_;
-        lock $instance;
-        return $instance if $instance;
+        return $instance if defined $instance;
         $instance = &share({});
         $instance->{name} = $name;
         return bless $instance, $class;
     }
 }
 
-sub get_name {
+sub get_name : locked method {
     my ($self) = @_;
-    lock %{$self};
     return $self->{name};
 }
 
-sub get_age {
+sub get_age : locked method {
     my ($self) = @_;
-    lock %{$self};
     return $self->{age}++;
 }
 
 1;
-_END_

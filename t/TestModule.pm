@@ -4,23 +4,19 @@ use threads::shared;
 
 sub new {
     my ($class, $name) = @_;
-    my $self : shared;
-    $self = &share({});
+    my $self = &share({});
     $self->{name} = $name;
     return bless $self, $class;
 }
 
-sub get_name {
+sub get_name : locked method {
     my ($self) = @_;
-    lock %{$self};
     return $self->{name};
 }
 
-sub get_age {
+sub get_age : locked method {
     my ($self) = @_;
-    lock %{$self};
     return $self->{age}++;
 }
 
 1;
-_END_

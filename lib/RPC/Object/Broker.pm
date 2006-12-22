@@ -5,30 +5,34 @@ use threads::shared;
 use warnings;
 use Carp;
 use IO::Socket::INET;
-use Scalar::Util qw(blessed weaken);
+use Scalar::Util qw(blessed);
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 use RPC::Object::Container;
 
 {
-    my $instance : shared;
-    sub get_instance {
+    my $instance;
+    sub get_instance : locked {
         my ($class, $port, @preload) = @_;
-        lock $instance;
-        return $instance if $instance;
+        return $instance if defined $instance;
         $instance = &share({});
         $instance->{port} = $port;
         $instance->{preload} = &share({});
-        $instance->{container} = RPC::Object::Container->new();
+        $instance->{container} = &share(RPC::Object::Container->new());
         bless $instance, $class;
         $instance->_get_container()->insert($instance);
-        weaken $instance;
         for (@preload) {
             $instance->_load_module($_);
             $instance->{preload}{$_} = 1;
         }
         return $instance;
     }
+
+}
+
+sub _get_container : locked method {
+    my ($self) = @_;
+    return $self->{container};
 }
 
 sub _get_blessed_instance {
@@ -48,14 +52,16 @@ sub start {
                                      Type => SOCK_STREAM,
                                      Reuse => 1,
                                      Listen => 10,
-                                    );
+                                     TimeOut => 10);
     binmode $sock;
-    while (my $conn = $sock->accept()) {
+    while (1) {
+        my $conn = $sock->accept();
+        next unless defined $conn;
         my $thr = async {
             $sock->close();
             my $res = do { local $/; <$conn> };
             $res = thaw($res);
-            print {$conn} nfreeze($self->handle($res));
+            print $conn nfreeze($self->_handle($res));
             $conn->close();
         };
         $thr->detach();
@@ -63,35 +69,29 @@ sub start {
     }
 }
 
-sub handle {
+sub _handle {
     my ($self, $arg) = @_;
     my $context = shift @$arg;
     my $func = shift @$arg;
     my $ref = shift @$arg;
     my $obj;
     my $pack;
-    {
-        $obj = $self->_get_container()->get($ref);
-        $obj = $ref unless $obj;
-        $pack = blessed $obj;
-        $pack = $ref unless $pack;
-        eval { $self->_load_module($pack) };
-        return [RESPONSE_ERROR, $@] if $@;
-        if ($pack && $func eq RELEASE_REF) {
-            $self->_get_container()->remove($ref);
-            return [RESPONSE_NORMAL];
-        }
-    }
-    my @ret;
-    {
-        no strict;
-        @ret = $context eq WANT_SCALAR
-          ? scalar eval { $obj->$func(@$arg) }
-            : eval { $obj->$func(@$arg) };
-        no warnings 'uninitialized';
-        if (blessed $ret[0]) {
-            $ret[0] = $self->_get_container()->insert($ret[0]);
-        }
+    my $container = $self->_get_container();
+
+    $obj = $container->get($ref);
+    $obj = $ref unless $obj;
+    $pack = blessed $obj;
+    $pack = $ref unless $pack;
+    eval { $self->_load_module($pack) };
+    return [RESPONSE_ERROR, $@] if $@;
+
+    no strict;
+    no warnings 'uninitialized';
+    my @ret = $context eq WANT_SCALAR
+      ? scalar eval { $obj->$func(@$arg) }
+        : eval { $obj->$func(@$arg) };
+    if (blessed $ret[0]) {
+        $ret[0] = $container->insert($ret[0]);
     }
     return $@ ? [RESPONSE_ERROR, $@] : [RESPONSE_NORMAL, @ret];
 }
@@ -105,11 +105,6 @@ sub _load_module {
     eval qq{ require $pack };
     die $@ if $@;
     return;
-}
-
-sub _get_container {
-    my ($self) = @_;
-    return $self->{container};
 }
 
 1;

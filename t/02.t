@@ -9,6 +9,8 @@ use RPC::Object::Broker;
 my $s = Thread::Semaphore->new();
 my $serv_port = 9000;
 
+open $RPC::Object::Common::LOG_FH, '>', 'testlog.txt';
+
 $s->down();
 async {
     my $b = RPC::Object::Broker->get_instance($serv_port, 't::TestModule');

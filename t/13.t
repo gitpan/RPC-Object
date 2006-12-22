@@ -1,7 +1,6 @@
 use strict;
 use threads;
 use threads::shared;
-use IO::File;
 use Test::More qw(no_plan);
 use Thread::Semaphore;
 use RPC::Object;

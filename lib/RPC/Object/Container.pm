@@ -4,44 +4,34 @@ use threads;
 use threads::shared;
 use warnings;
 use RPC::Object::Common;
-use Scalar::Util qw(blessed refaddr);
+use Scalar::Util qw(blessed refaddr weaken);
 
 sub new {
     my ($class) = @_;
-    my $self : shared;
-    $self = &share({});
+    my $self = &share({});
     bless $self, $class;
     return $self;
 }
 
-sub insert {
+sub insert : locked method {
     my ($self, $obj) = @_;
-    lock %$self;
     my $ref = _encode_ref($obj);
     $self->{$ref} = $obj;
+    weaken $self->{$ref};
     _log "insert $obj as $ref\n";
     return $ref;
 }
 
-sub remove {
+sub get : locked method {
     my ($self, $ref) = @_;
-    lock %$self;
-    delete $self->{$ref};
-    _log "remove $ref\n";
-}
-
-sub get {
-    my ($self, $ref) = @_;
-    lock %$self;
     my $obj = $self->{$ref};
     no warnings 'uninitialized';
     _log "get $obj as $ref\n";
     return $obj;
 }
 
-sub find {
+sub find : locked method {
     my ($self, $class) = @_;
-    lock %$self;
     my $obj;
     for my $ref (keys %$self) {
         $obj = $self->{$ref};
