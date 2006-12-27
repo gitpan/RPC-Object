@@ -3,31 +3,24 @@ use strict;
 use threads;
 use threads::shared;
 use warnings;
-use Carp;
-use IO::Socket::INET;
-use Scalar::Util qw(blessed);
+use Scalar::Util qw(blessed weaken);
+use Socket;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 use RPC::Object::Container;
 
-{
-    my $instance;
-    sub get_instance : locked {
-        my ($class, $port, @preload) = @_;
-        return $instance if defined $instance;
-        $instance = &share({});
-        $instance->{port} = $port;
-        $instance->{preload} = &share({});
-        $instance->{container} = &share(RPC::Object::Container->new());
-        bless $instance, $class;
-        $instance->_get_container()->insert($instance);
-        for (@preload) {
-            $instance->_load_module($_);
-            $instance->{preload}{$_} = 1;
-        }
-        return $instance;
+sub new : locked {
+    my ($class, $port, @preload) = @_;
+    my  $self = &share({});
+    $self->{port} = $port;
+    $self->{preload} = &share({});
+    $self->{container} = &share(RPC::Object::Container->new());
+    bless $self, $class;
+    for (@preload) {
+        $self->_load_module($_);
+        $self->{preload}{$_} = 1;
     }
-
+    return $self;
 }
 
 sub _get_container : locked method {
@@ -35,37 +28,27 @@ sub _get_container : locked method {
     return $self->{container};
 }
 
-sub _get_blessed_instance {
-    my $class = shift;
-    my $method = shift;
-    my $rclass = shift;
-    my $self = $class->get_instance();
-    my $obj = $self->_get_container()->find($rclass);
-    return $obj if defined $obj;
-    $self->_load_module($rclass);
-    return $rclass->$method(@_);
-}
-
 sub start {
     my ($self) = @_;
-    my $sock = IO::Socket::INET->new(LocalPort => $self->{port},
-                                     Type => SOCK_STREAM,
-                                     Reuse => 1,
-                                     Listen => 10,
-                                     TimeOut => 10);
-    binmode $sock;
+    my $proto = getprotobyname('tcp');
+    socket(SERVER, PF_INET, SOCK_STREAM, $proto);
+    setsockopt(SERVER, SOL_SOCKET, SO_REUSEADDR, pack('l', 1));
+    bind(SERVER, sockaddr_in($self->{port}, INADDR_ANY));
+    listen(SERVER, SOMAXCONN);
     while (1) {
-        my $conn = $sock->accept();
-        next unless defined $conn;
-        my $thr = async {
-            $sock->close();
-            my $res = do { local $/; <$conn> };
-            $res = thaw($res);
-            print $conn nfreeze($self->_handle($res));
-            $conn->close();
-        };
-        $thr->detach();
-        $conn->close();
+        my $paddr = accept(CLIENT, SERVER);
+        next unless $paddr;
+        async {
+            binmode(CLIENT);
+            my $req = do { local $/; <CLIENT> };
+            select(CLIENT);
+            $| = 1;
+            select(STDOUT);
+            print CLIENT nfreeze($self->_handle(thaw($req)));
+            shutdown(CLIENT, 2);
+            close(CLIENT);
+        }->detach();
+        close(CLIENT);
     }
 }
 
@@ -74,13 +57,16 @@ sub _handle {
     my $context = shift @$arg;
     my $func = shift @$arg;
     my $ref = shift @$arg;
-    my $obj;
-    my $pack;
     my $container = $self->_get_container();
 
-    $obj = $container->get($ref);
+    if ($func eq FIND_INSTANCE && $ref eq __PACKAGE__) {
+        my $ret = $container->find($arg->[0]);
+        return [RESPONSE_NORMAL, $ret];
+    }
+
+    my $obj = $container->get($ref);
     $obj = $ref unless $obj;
-    $pack = blessed $obj;
+    my $pack = blessed($obj);
     $pack = $ref unless $pack;
     eval { $self->_load_module($pack) };
     return [RESPONSE_ERROR, $@] if $@;

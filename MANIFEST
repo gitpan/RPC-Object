@@ -4,6 +4,8 @@ MANIFEST
 README
 t/01.t
 t/02.t
+t/11.t
+t/12.t
 t/13.t
 t/14.t
 t/TestModule.pm

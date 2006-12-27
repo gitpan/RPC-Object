@@ -11,20 +11,19 @@ my $serv_port = 9000;
 
 $s->down();
 async {
-    my $b = RPC::Object::Broker->get_instance($serv_port);
+    my $b = RPC::Object::Broker->new($serv_port);
     $s->up();
     $b->start();
 }->detach;
 
 $s->down();
 my $name = 'Haha';
-my $o = RPC::Object->get_instance("localhost:$serv_port", 'get_instance', 't::TestModule1', $name);
+my $o = RPC::Object->new("localhost:$serv_port", 'get_instance', 't::TestModule1', $name);
 ok($o->get_name() eq $name);
 ok($o->get_age() == 0);
 ok($o->get_age() == 1);
 
-my $name2 = 'Hahaha';
-$o = RPC::Object->get_instance("localhost:$serv_port", 'get_instance', 't::TestModule1', $name2);
+$o = RPC::Object->get_instance("localhost:$serv_port", 't::TestModule1');
 ok($o->get_name() eq $name);
 ok($o->get_age() == 2);
 ok($o->get_age() == 3);

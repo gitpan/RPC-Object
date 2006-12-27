@@ -1,5 +1,8 @@
 Revision history for Perl extension RPC::Object.
 
+0.16  27-DEC-2006
+        - Replaced IO::Socket with Socket;
+
 0.15  22-DEC-2006
         - removed rpc_object_release()
         - Housekeeping

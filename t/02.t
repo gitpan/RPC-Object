@@ -13,7 +13,7 @@ open $RPC::Object::Common::LOG_FH, '>', 'testlog.txt';
 
 $s->down();
 async {
-    my $b = RPC::Object::Broker->get_instance($serv_port, 't::TestModule');
+    my $b = RPC::Object::Broker->new($serv_port, 't::TestModule');
     $s->up();
     $b->start();
 }->detach;

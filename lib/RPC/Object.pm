@@ -2,11 +2,11 @@ package RPC::Object;
 use strict;
 use warnings;
 use Carp;
-use IO::Socket::INET;
+use Socket;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -16,14 +16,14 @@ sub new {
     my $obj = _invoke($host, $port, @_);
     my $self = &share({});
     %$self = (host => $host, port => $port, object => $obj);
-    return bless $self, $class;
+    return bless($self, $class);
 }
 
 sub get_instance {
     my $class = shift;
     my $url = shift;
     my $self = $class->new($url,
-                           '_get_blessed_instance',
+                           FIND_INSTANCE,
                            'RPC::Object::Broker',
                            @_);
     return $self;
@@ -31,7 +31,9 @@ sub get_instance {
 
 sub AUTOLOAD {
     my $self = shift;
-    my $name = (split '::', our $AUTOLOAD)[-1];
+    my @ns = split '::', our $AUTOLOAD;
+    my $name = pop @ns;
+    return unless __PACKAGE__ eq (join('::', @ns));
     my $host = $self->{host};
     my $port = $self->{port};
     my $obj = $self->{object};
@@ -47,24 +49,21 @@ sub AUTOLOAD {
 sub _invoke {
     my $host = shift;
     my $port = shift;
-    my $sock;
-    my $connected;
-    while (!$connected) {
-        eval {
-            $sock = IO::Socket::INET->new(PeerAddr => $host,
-                                          PeerPort => $port,
-                                          Proto => 'tcp',
-                                          Type => SOCK_STREAM);
-            binmode $sock;
-        };
-        $connected = !$@;
-        sleep 1 unless $connected;
+    my $proto = getprotobyname('tcp');
+    socket(SOCK, PF_INET, SOCK_STREAM, $proto);
+    my $iaddr = inet_aton($host);
+    my $addr = sockaddr_in($port, $iaddr);
+    while (!connect(SOCK, $addr)) {
+        sleep(1);
     }
-    print $sock nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @_]);
-    $sock->shutdown(1);
-    my $res = do { local $/; <$sock> };
-    $sock->close();
-
+    binmode(SOCK);
+    select(SOCK);
+    $| = 1;
+    select(STDOUT);
+    print SOCK nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @_]);
+    shutdown(SOCK, 1);
+    my $res = do { local $/; <SOCK> };
+    close(SOCK);
     my ($stat, @ret) = @{thaw($res)};
     if ($stat eq RESPONSE_ERROR) {
         carp @ret;
@@ -90,7 +89,7 @@ RPC::Object - A lightweight implementation for remote procedure calls
 B<On server>
 
   use RPC::Object::Broker;
-  $b = $RPC::Object::Broker->get_instance($port, @preload_modules);
+  $b = $RPC::Object::Broker->new($port, @preload_modules);
   $b->start();
 
 B<On client>
@@ -100,8 +99,11 @@ B<On client>
   my $ans1 = $o->method_b($arg1, $arg2);
   my @ans2 = $o->method_c($arg3, $arg4);
 
-  # or access the global instance
-  $o2 = RPC::Object->get_instance("$host:$port", 'method_x', 'TestModule2');
+  # To access the global instance
+  # allocate and initialize first,
+  RPC::Object->new("$host:$port", 'method_a', 'TestModule');
+  ...
+  $global = RPC::Object->get_instance("$host:$port", 'TestModule');
 
 B<TestModule>
 
@@ -118,21 +120,6 @@ B<TestModule>
   sub method_b {
       ...
   }
-  ...
-
-B<TestModule2>
-
-  package TestModule2;
-  use threads;
-  ...
-  {
-     my $instance : share;
-     sub method_x {
-         ...
-         return $instance;
-     }
-  }
-  ...
 
 Please see more examples in the test scripts.
 
