@@ -6,7 +6,7 @@ use Socket;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -127,7 +127,7 @@ Please see more examples in the test scripts.
 
 C<RPC::Object> is designed to be very simple and only works between
 Perl codes, This makes its implementation only need some core Perl
-modules, e.g. IO and Storable.
+modules, e.g. Socket and Storable.
 
 Other approaches like SOAP or XML-RPC are too heavy for simple tasks.
 

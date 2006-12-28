@@ -6,7 +6,7 @@ use warnings;
 use RPC::Object::Common;
 use Scalar::Util qw(blessed refaddr weaken);
 
-sub new {
+sub new : locked {
     my ($class) = @_;
     my $self = &share({});
     bless($self, $class);
@@ -16,7 +16,7 @@ sub new {
 sub insert : locked method {
     my ($self, $obj) = @_;
     my $ref = _encode_ref($obj);
-    $self->{$ref} = &share($obj);
+    $self->{$ref} = $obj;
     weaken($self->{$ref});
     _log "insert $obj as $ref\n";
     return $ref;
