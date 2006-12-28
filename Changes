@@ -1,5 +1,8 @@
 Revision history for Perl extension RPC::Object.
 
+0.20  28-DEC-2006
+        - Replaced RPC::Object's implementation from shared hash to scalar ref
+
 0.18  28-DEC-2006
         - Updated file ``Changes''
 

@@ -6,7 +6,7 @@ use Socket;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.18';
+our $VERSION = '0.20';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -14,19 +14,17 @@ sub new {
     my $url = shift;
     my ($host, $port) = $url =~ m{([^:]+):(\d+)};
     my $obj = _invoke($host, $port, @_);
-    my $self = &share({});
-    %$self = (host => $host, port => $port, object => $obj);
+    my $self = \"$host:$port:$obj";
     return bless($self, $class);
 }
 
 sub get_instance {
     my $class = shift;
     my $url = shift;
-    my $self = $class->new($url,
-                           FIND_INSTANCE,
-                           'RPC::Object::Broker',
-                           @_);
-    return $self;
+    return $class->new($url,
+                       FIND_INSTANCE,
+                       'RPC::Object::Broker',
+                       @_);
 }
 
 sub AUTOLOAD {
@@ -34,9 +32,7 @@ sub AUTOLOAD {
     my @ns = split '::', our $AUTOLOAD;
     my $name = pop @ns;
     return unless __PACKAGE__ eq (join('::', @ns));
-    my $host = $self->{host};
-    my $port = $self->{port};
-    my $obj = $self->{object};
+    my ($host, $port, $obj) = split(':', $$self);
     if ($name eq 'DESTROY') {
         return;
     }
@@ -144,6 +140,12 @@ There is no guarantee that the destructor will be called as expected.
 B<Global instance>
 
 To allocate and access global instances, use the C<RPC::Object::get_instance()> method.
+
+=head1 KNOW ISSUES
+
+B<Need re-bless RPC::Object>
+
+C<threads::shared> prior to 0.95 does not support bless on shred refs, if an <RPC::Object> is passed across threads, it may need re-bless to C<RPC::Object>.
 
 =head1 AUTHORS
 
