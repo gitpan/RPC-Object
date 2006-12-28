@@ -1,5 +1,11 @@
 Revision history for Perl extension RPC::Object.
 
+0.18  28-DEC-2006
+        - Updated file ``Changes''
+
+0.17  28-DEC-2006
+        - Fixed a problem in Container that broke tests on Perl 5.8.8
+
 0.16  27-DEC-2006
         - Replaced IO::Socket with Socket;
 
