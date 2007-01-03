@@ -1,12 +1,14 @@
 package RPC::Object;
 use strict;
+use threads;
+use threads::shared;
 use warnings;
 use Carp;
 use Socket;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -14,7 +16,7 @@ sub new {
     my $url = shift;
     my ($host, $port) = $url =~ m{([^:]+):(\d+)};
     my $obj = _invoke($host, $port, @_);
-    my $self = \"$host:$port:$obj";
+    my $self = &share(\"$host:$port:$obj");
     return bless($self, $class);
 }
 
@@ -45,32 +47,43 @@ sub AUTOLOAD {
 sub _invoke {
     my $host = shift;
     my $port = shift;
-    my $proto = getprotobyname('tcp');
-    socket(SOCK, PF_INET, SOCK_STREAM, $proto);
+    my $proto = getprotobyname('tcp') or croak $!;
+    socket(SOCK, PF_INET, SOCK_STREAM, $proto) != -1 or croak $!;
     my $iaddr = inet_aton($host);
+    croak $! unless defined $iaddr;
     my $addr = sockaddr_in($port, $iaddr);
+    croak $! unless defined $addr;
+    my $retry = 0;
     while (!connect(SOCK, $addr)) {
-        sleep(1);
+        ++$retry;
+        croak 'connect retry exceed' if $retry > CONNECT_RETRY_MAX;
+        sleep(CONNECT_RETRY_WAIT);
     }
-    binmode(SOCK);
-    select(SOCK);
+    binmode(SOCK) or croak $!;
+    my $oldfh = select(SOCK);
     $| = 1;
-    select(STDOUT);
-    print SOCK nfreeze([wantarray ? WANT_LIST : WANT_SCALAR, @_]);
-    shutdown(SOCK, 1);
-    my $res = do { local $/; <SOCK> };
-    close(SOCK);
-    my ($stat, @ret) = @{thaw($res)};
+    select($oldfh);
+    my $context = wantarray;
+    $context
+      = $context ? WANT_LIST : defined $context ? WANT_SCALAR : WANT_VOID;
+    eval { print SOCK nfreeze([$context, @_]) };
+    croak $@ if $@;
+    shutdown(SOCK, 1) != -1 or croak $!;
+    my $res = eval { local $/; <SOCK> };
+    croak $@ if $@;
+    close(SOCK) or croak $!;
+    my ($stat, @ret) = eval { @{thaw($res)} };
+    croak $@ if $@;
     if ($stat eq RESPONSE_ERROR) {
         carp @ret;
+        return;
     }
     elsif ($stat eq RESPONSE_NORMAL) {
         return wantarray ? @ret : $ret[0];
     }
     else {
-        carp "Unknown response";
+        croak "unknown response";
     }
-    return;
 }
 
 1;
@@ -139,9 +152,13 @@ There is no guarantee that the destructor will be called as expected.
 
 B<Global instance>
 
-To allocate and access global instances, use the C<RPC::Object::get_instance()> method.
+To allocate global instances, use the C<RPC::Object::new()> method. Then use the C<RPC::Object::get_instance()> method to access them.
 
 =head1 KNOW ISSUES
+
+B<Scalars leaked warning>
+
+This is expected for now. The walkaround is to close STDERR.
 
 B<Need re-bless RPC::Object>
 

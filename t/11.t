@@ -1,3 +1,11 @@
+BEGIN {
+    use Config;
+    if (!$Config{useithreads}) {
+        print ("1..0 # Skip: Perl not compiled with 'useithreads'\n");
+        exit 0;
+    }
+}
+
 use strict;
 use threads;
 use threads::shared;
@@ -8,8 +16,6 @@ use RPC::Object::Broker;
 
 my $s = Thread::Semaphore->new();
 my $serv_port = 9000;
-
-open local $RPC::Object::Common::LOG_FH, ">", 'test_11.log';
 
 $s->down();
 async {

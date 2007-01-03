@@ -25,13 +25,15 @@ async {
 }->detach;
 
 $s->down();
-my $name = 'Haha';
-my $o = RPC::Object->new("localhost:$serv_port", 'get_instance', 't::TestModule1', $name);
-ok($o->get_name() eq $name);
-ok($o->get_age() == 0);
-ok($o->get_age() == 1);
 
-$o = RPC::Object->get_instance("localhost:$serv_port", 't::TestModule1');
-ok($o->get_name() eq $name);
-ok($o->get_age() == 2);
-ok($o->get_age() == 3);
+my $o = RPC::Object->new("localhost:$serv_port", 'new', 't::TestModule2');
+
+$o->call();
+no warnings 'uninitialized';
+ok($o->get_context() == undef);
+scalar $o->call();
+ok(!$o->get_context());
+my @ret = $o->call();
+ok($o->get_context());
+
+

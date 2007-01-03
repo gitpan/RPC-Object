@@ -3,6 +3,7 @@ use strict;
 use threads;
 use threads::shared;
 use warnings;
+use Carp;
 use Scalar::Util qw(blessed weaken);
 use Socket;
 use Storable qw(thaw nfreeze);
@@ -30,25 +31,30 @@ sub _get_container : locked method {
 
 sub start {
     my ($self) = @_;
-    my $proto = getprotobyname('tcp');
-    socket(SERVER, PF_INET, SOCK_STREAM, $proto);
-    setsockopt(SERVER, SOL_SOCKET, SO_REUSEADDR, pack('l', 1));
-    bind(SERVER, sockaddr_in($self->{port}, INADDR_ANY));
-    listen(SERVER, SOMAXCONN);
+    my $proto = getprotobyname('tcp') or croak $!;
+    socket(SERVER, PF_INET, SOCK_STREAM, $proto) != -1 or croak $!;
+    setsockopt(SERVER, SOL_SOCKET, SO_REUSEADDR, pack('l', 1)) or croak $!;
+    bind(SERVER, sockaddr_in($self->{port}, INADDR_ANY)) or croak $!;
+    listen(SERVER, SOMAXCONN) or croak $!;
     while (1) {
         my $paddr = accept(CLIENT, SERVER);
-        next unless $paddr;
+        if (!$paddr) {
+            carp $!;
+            next;
+        }
         async {
-            binmode(CLIENT);
-            my $req = do { local $/; <CLIENT> };
-            select(CLIENT);
+            binmode(CLIENT) or carp $!;
+            my $req = eval { local $/; <CLIENT> };
+            carp $@ if $@;
+            my $oldfh = select(CLIENT);
             $| = 1;
-            select(STDOUT);
-            print CLIENT nfreeze($self->_handle(thaw($req)));
-            shutdown(CLIENT, 2);
-            close(CLIENT);
+            select($oldfh);
+            eval { print CLIENT nfreeze($self->_handle(thaw($req))) };
+            carp $@ if $@;
+            shutdown(CLIENT, 2) != -1 or carp $!;
+            close(CLIENT) or carp $!;
         }->detach();
-        close(CLIENT);
+        close(CLIENT) or carp $!;
     }
 }
 
@@ -73,9 +79,16 @@ sub _handle {
 
     no strict;
     no warnings 'uninitialized';
-    my @ret = $context eq WANT_SCALAR
-      ? scalar eval { $obj->$func(@$arg) }
-        : eval { $obj->$func(@$arg) };
+    my @ret;
+    if ($context eq WANT_LIST) {
+       @ret = eval { $obj->$func(@$arg) };
+    } elsif ($context eq WANT_SCALAR) {
+        $ret[0] = eval { $obj->$func(@$arg) };
+    } elsif ($context eq WANT_VOID) {
+        eval { $obj->$func(@$arg) };
+    } else {
+        return [RESPONSE_ERROR, 'unknown context'];
+    }
     if (blessed $ret[0]) {
         $ret[0] = $container->insert($ret[0]);
     }
@@ -89,7 +102,7 @@ sub _load_module {
     return if !$pack || $self->{preload}{$pack};
     _log "LOADING: $pack\n";
     eval qq{ require $pack };
-    die $@ if $@;
+    croak $@ if $@;
     return;
 }
 

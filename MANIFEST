@@ -9,8 +9,10 @@ t/12.t
 t/13.t
 t/14.t
 t/21.t
+t/31.t
 t/TestModule.pm
 t/TestModule1.pm
+t/TestModule2.pm
 lib/RPC/Object.pm
 lib/RPC/Object/Broker.pm
 lib/RPC/Object/Common.pm

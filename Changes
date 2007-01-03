@@ -1,5 +1,10 @@
 Revision history for Perl extension RPC::Object.
 
+0.21  02-JAN-2006
+        - Handled void context correctly
+        - Added more error handling code for Socket operations
+        - Updated tests to skip on Perl with no threads support
+
 0.20  28-DEC-2006
         - Replaced RPC::Object's implementation from shared hash to scalar ref
 

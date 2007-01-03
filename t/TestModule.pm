@@ -6,6 +6,7 @@ sub new {
     my ($class, $name) = @_;
     my $self = &share({});
     $self->{name} = $name;
+    $self->{age} = 0;
     return bless $self, $class;
 }
 
@@ -16,7 +17,9 @@ sub get_name : locked method {
 
 sub get_age : locked method {
     my ($self) = @_;
-    return $self->{age}++;
+    my $age = $self->{age};
+    $self->{age}++;
+    return $age;
 }
 
 1;
