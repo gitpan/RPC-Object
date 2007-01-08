@@ -63,6 +63,6 @@ ok($r->get_age() == 0);
 ok($r->get_age() == 1);
 
 END {
-    kill 9, $pid;
-    sleep 1;
+    my $ko = RPC::Object->new("localhost:$port", 'new', 'TestModuleC');
+    eval { $ko->call_to_exit() };
 }

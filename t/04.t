@@ -31,7 +31,9 @@ ok($@ && $@ =~ /^DIED/);
 eval { $o->call_to_exit() };
 ok($@ && $@ =~ /^unexpected disconnection/);
 
+my $killed = 1;
+
 END {
-    kill 9, $pid;
-    sleep 1;
+    eval { $o->call_to_exit() } unless $killed;
 }
+

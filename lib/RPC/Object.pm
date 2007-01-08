@@ -8,7 +8,7 @@ use Socket;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.22';
+our $VERSION = '0.23';
 $VERSION = eval $VERSION;
 
 sub new {

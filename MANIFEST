@@ -6,6 +6,7 @@ t/01.t
 t/02.t
 t/03.t
 t/04.t
+t/broker.pl
 t/TestModuleA.pm
 t/TestModuleB.pm
 t/TestModuleC.pm

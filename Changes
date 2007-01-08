@@ -1,5 +1,9 @@
 Revision history for Perl extension RPC::Object.
 
+0.23  07-JAN-2006
+        - Added the missing t/broker.pl
+        - Replaced kill with remote exit to kill test broker
+
 0.22  07-JAN-2006
         - Improved error handling
         - Reorganized tests

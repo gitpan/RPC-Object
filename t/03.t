@@ -33,8 +33,7 @@ ok(!$o->get_context());
 my @ret = $o->call();
 ok($o->get_context());
 
-
 END {
-    kill 9, $pid;
-    sleep 1;
+    eval { $o->call_to_exit() };
 }
+
