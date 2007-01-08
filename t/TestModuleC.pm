@@ -1,4 +1,4 @@
-package t::TestModule2;
+package TestModuleC;
 use threads;
 use threads::shared;
 
@@ -16,6 +16,14 @@ sub call : locked method {
 sub get_context : locked method {
     my ($self) = @_;
     return $self->{context};
+}
+
+sub call_to_exit {
+    exit 0;
+}
+
+sub call_to_die {
+    die "DIED";
 }
 
 1;

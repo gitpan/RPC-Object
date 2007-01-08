@@ -8,13 +8,15 @@ use Socket;
 use Storable qw(thaw nfreeze);
 use RPC::Object::Common;
 
-our $VERSION = '0.21';
+our $VERSION = '0.22';
 $VERSION = eval $VERSION;
 
 sub new {
     my $class = shift;
     my $url = shift;
     my ($host, $port) = $url =~ m{([^:]+):(\d+)};
+    croak "invalid address fromat, should be hostname:port"
+      unless defined $host && defined $port;
     my $obj = _invoke($host, $port, @_);
     my $self = &share(\"$host:$port:$obj");
     return bless($self, $class);
@@ -69,21 +71,14 @@ sub _invoke {
     eval { print SOCK nfreeze([$context, @_]) };
     croak $@ if $@;
     shutdown(SOCK, 1) != -1 or croak $!;
-    my $res = eval { local $/; <SOCK> };
-    croak $@ if $@;
+    my $res = do { local $/; <SOCK> };
+    croak "unexpected disconnection" unless defined $res;
     close(SOCK) or croak $!;
-    my ($stat, @ret) = eval { @{thaw($res)} };
+    my ($state, @ret) = eval { @{thaw($res)} };
     croak $@ if $@;
-    if ($stat eq RESPONSE_ERROR) {
-        carp @ret;
-        return;
-    }
-    elsif ($stat eq RESPONSE_NORMAL) {
-        return wantarray ? @ret : $ret[0];
-    }
-    else {
-        croak "unknown response";
-    }
+    croak @ret if $state eq RESPONSE_ERROR;
+    croak "unknown response" if $state ne RESPONSE_NORMAL;
+    return wantarray ? @ret : $ret[0];
 }
 
 1;

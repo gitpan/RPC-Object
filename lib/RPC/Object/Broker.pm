@@ -18,8 +18,8 @@ sub new : locked {
     $self->{container} = &share(RPC::Object::Container->new());
     bless $self, $class;
     for (@preload) {
-        $self->_load_module($_);
-        $self->{preload}{$_} = 1;
+        eval { $self->_load_module($_) };
+        $@ ? carp $@ : ($self->{preload}{$_} = 1);
     }
     return $self;
 }

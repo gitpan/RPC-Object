@@ -1,4 +1,4 @@
-package t::TestModule;
+package TestModuleA;
 use threads;
 use threads::shared;
 

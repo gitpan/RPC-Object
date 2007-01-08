@@ -1,5 +1,10 @@
 Revision history for Perl extension RPC::Object.
 
+0.22  07-JAN-2006
+        - Improved error handling
+        - Reorganized tests
+        - Reduced scalar leaked warning in tests by running broker in its own process
+
 0.21  02-JAN-2006
         - Handled void context correctly
         - Added more error handling code for Socket operations
