@@ -17,45 +17,40 @@ BEGIN {
     use_ok('RPC::Object::Broker');
 }
 
-require_ok('RPC::Object');
-require_ok('RPC::Object::Broker');
-
-my $port = 9000;
-
 my ($out, $in);
-my $pid = open2($out, $in, qq($^X t/broker.pl $port TestModuleA TestModuleB));
+my $pid = open2($out, $in, qq($^X t/broker.pl TestModuleA TestModuleB));
 
 my $name = 'Haha';
-my $o = RPC::Object->new("localhost:$port", 'new', 'TestModuleA', $name);
+my $o = RPC::Object->new("localhost", 'new', 'TestModuleA', $name);
 ok($o->get_name() eq $name);
 ok($o->get_age() == 0);
 ok($o->get_age() == 1);
 
-my $o2 = RPC::Object->get_instance("localhost:$port", 'TestModuleA');
+my $o2 = RPC::Object->get_instance("localhost", 'TestModuleA');
 ok($o2->get_name() eq $name);
 ok($o2->get_age() == 2);
 ok($o2->get_age() == 3);
 
 
 $name = 'Hahaha';
-my $o3 = RPC::Object->new("localhost:$port", 'new', 'TestModuleA', $name);
+my $o3 = RPC::Object->new("localhost", 'new', 'TestModuleA', $name);
 ok($o3->get_name() eq $name);
 ok($o3->get_age() == 0);
 ok($o3->get_age() == 1);
 
 $name = 'Haha';
-my $o4 = RPC::Object->new("localhost:$port", 'get_instance', 'TestModuleB', $name);
+my $o4 = RPC::Object->new("localhost", 'get_instance', 'TestModuleB', $name);
 ok($o4->get_name() eq $name);
 ok($o4->get_age() == 0);
 ok($o4->get_age() == 1);
 
-my $o5 = RPC::Object->get_instance("localhost:$port", 'TestModuleB');
+my $o5 = RPC::Object->get_instance("localhost", 'TestModuleB');
 ok($o5->get_name() eq $name);
 ok($o5->get_age() == 2);
 ok($o5->get_age() == 3);
 
 my $so = &share({});
-$so->{obj} = RPC::Object->new("localhost:$port", 'get_instance', 'TestModuleB', $name);
+$so->{obj} = &share(RPC::Object->new("localhost", 'get_instance', 'TestModuleB', $name));
 my $r = $so->{obj};
 bless $r, 'RPC::Object';
 ok($r->get_name() eq $name);
@@ -63,7 +58,7 @@ ok($r->get_age() == 0);
 ok($r->get_age() == 1);
 
 END {
-    my $ko = RPC::Object->new("localhost:$port", 'new', 'TestModuleC');
+    my $ko = RPC::Object->new("localhost", 'new', 'TestModuleC');
     eval { $ko->call_to_exit() };
 }
 

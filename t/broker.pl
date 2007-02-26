@@ -5,8 +5,8 @@ BEGIN {
 }
 use RPC::Object::Broker;
 
-my ($port, @preload) = @ARGV;
+my @preload = @ARGV;
 
-my $b = RPC::Object::Broker->new($port, @preload);
+my $b = RPC::Object::Broker->new(preload => \@preload);
 
 $b->start();

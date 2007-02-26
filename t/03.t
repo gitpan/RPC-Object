@@ -15,15 +15,10 @@ BEGIN {
     use_ok('RPC::Object::Broker');
 }
 
-require_ok('RPC::Object');
-require_ok('RPC::Object::Broker');
-
-my $port = 9000;
-
 my ($out, $in);
-my $pid = open2($out, $in, "$^X t/broker.pl $port");
+my $pid = open2($out, $in, "$^X t/broker.pl");
 
-my $o = RPC::Object->new("localhost:$port", 'new', 'TestModuleC');
+my $o = RPC::Object->new("localhost", 'new', 'TestModuleC');
 
 $o->call();
 no warnings 'uninitialized';

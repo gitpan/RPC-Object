@@ -1,18 +1,19 @@
 Changes
 Makefile.PL
 MANIFEST
+Object.pm
+Object/Broker.pm
+Object/Container.pm
+Object/Transport.pm
 README
 t/01.t
 t/02.t
 t/03.t
 t/04.t
-t/broker.pl
+t/05.t
 t/TestModuleA.pm
 t/TestModuleB.pm
 t/TestModuleC.pm
-lib/RPC/Object.pm
-lib/RPC/Object/Broker.pm
-lib/RPC/Object/Common.pm
-lib/RPC/Object/Container.pm
+t/broker.pl
 
 META.yml                                 Module meta-data (added by MakeMaker)

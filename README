@@ -18,15 +18,15 @@ DEPENDENCIES
 This module only requires these core modules and libraries:
 
      threads
-     threads-shared
+     threads::shared
      Carp
-     Socket
+     IO::Socket
      Storable
 
 COPYRIGHT AND LICENCE
 
 
-Copyright (C) 2006 by Jianyuan Wu <jwu@cpan.org>
+Copyright (C) 2006 - 2007 by Jianyuan Wu <jwu@cpan.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

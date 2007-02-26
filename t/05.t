@@ -7,6 +7,7 @@ BEGIN {
         exit 0;
     }
 }
+use threads;
 use IPC::Open2;
 use Test::More qw(no_plan);
 
@@ -18,17 +19,24 @@ BEGIN {
 my ($out, $in);
 my $pid = open2($out, $in, "$^X t/broker.pl");
 
-my $o = RPC::Object->new("localhost", 'new', 'TestModuleC');
-
-eval { $o->call_to_die() };
-ok($@ && $@ =~ /^DIED/);
-
-eval { $o->call_to_exit() };
-ok($@ && $@ =~ /^exceed/);
-
-my $killed = 1;
-
-END {
-    eval { $o->call_to_exit() } unless $killed;
+my $name = 'Haha';
+my $o = RPC::Object->new("localhost", 'new', 'TestModuleA', $name);
+my @thr;
+for (1..10) {
+    push @thr, async {
+        for (1..10) {
+            $o->get_age();
+        }
+    };
 }
 
+for (@thr) {
+    $_->join();
+}
+
+ok($o->get_age() == 100);
+
+END {
+    my $ko = RPC::Object->new("localhost", 'new', 'TestModuleC');
+    eval { $ko->call_to_exit() };
+}

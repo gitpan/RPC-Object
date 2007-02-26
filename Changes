@@ -1,5 +1,9 @@
 Revision history for Perl extension RPC::Object.
 
+0.31  26-FEB-2007
+        - Refactored to use prethreading module
+        - Changed to use IO::Socket again
+
 0.23  07-JAN-2006
         - Added the missing t/broker.pl
         - Replaced kill with remote exit to kill test broker

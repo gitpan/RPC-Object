@@ -1,11 +1,9 @@
-use 5.008004;
 use ExtUtils::MakeMaker;
 
-WriteMakefile(
-    NAME              => 'RPC::Object',
-    VERSION_FROM      => 'lib/RPC/Object.pm',
-    PREREQ_PM         => {},
-    ($] >= 5.005 ?
-      (ABSTRACT_FROM  => 'lib/RPC/Object.pm',
-       AUTHOR         => 'Jianyuan Wu <jwu@cpan.org>') : ()),
-);
+WriteMakefile('NAME'		=> 'RPC::Object',
+              'VERSION_FROM'	=> 'Object.pm',
+              'PREREQ_PM'	=> {}, # e.g., Module::Name => 1.1
+              ($] >= 5.005
+               ? (AUTHOR     => 'Jianyuan Wu <jwu@cpan.org>')
+               : ()),
+             );
